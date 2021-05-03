@@ -108,8 +108,8 @@ class ethData:
                 endBlock = lastBlock - blockInterval * (indexBlock - 1)
                 startBlock = endBlock - blockInterval
                 r = requests.get(ETHERSCAN_API_STRING.format(_address, startBlock, endBlock, _etherscanApiKey))
-                uniswapTransactions = r.json()
-                if(len(uniswapTransactions['result']) > 0):
+                if(r is not None):
+                    uniswapTransactions = r.json()
                     tmp_df = pd.DataFrame.from_dict(uniswapTransactions).filter(items = cols)
                     print("Index Block Interval n. {0} - Imported {1} items - DateTime: {2}".format(indexBlock, len(tmp_df), datetime.now().strftime("%d/%m/%Y %H:%M:%S")))
                     df = pd.concat([df, tmp_df])
