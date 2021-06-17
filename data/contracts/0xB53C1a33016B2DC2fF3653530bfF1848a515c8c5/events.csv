@@ -1,0 +1,12 @@
+,event
+0,AddressSet
+1,ConfigurationAdminUpdated
+2,EmergencyAdminUpdated
+3,LendingPoolCollateralManagerUpdated
+4,LendingPoolConfiguratorUpdated
+5,LendingPoolUpdated
+6,LendingRateOracleUpdated
+7,MarketIdSet
+8,OwnershipTransferred
+9,PriceOracleUpdated
+10,ProxyCreated

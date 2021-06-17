@@ -1,0 +1,11 @@
+,function
+0,WETH
+1,getAssetPrice
+2,getAssetsPrices
+3,getFallbackOracle
+4,getSourceOfAsset
+5,owner
+6,renounceOwnership
+7,setAssetSources
+8,setFallbackOracle
+9,transferOwnership
