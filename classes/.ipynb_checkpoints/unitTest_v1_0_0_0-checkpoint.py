@@ -1,3 +1,8 @@
+from past.builtins import execfile
+from . import loadVersioning as loadVersioning
+loadVersioning = loadVersioning.loadVersioning()
+execfile(loadVersioning.loader('blockchain'))
+
 class unitTest():
 
     def ___init__(self, name):
@@ -13,8 +18,6 @@ class blockchainTest(unitTest):
             self.name = name
         
         def test_web3Connection_infura(self):
-        
-            from . import blockchain_v1_0_0_0 as blockchain
 
             blockchain = blockchain.blockchain()
             INFURA_ID = '40816bb42ce34f808b4afe219e9d41cb' #change it with your own id

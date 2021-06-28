@@ -1,14 +1,16 @@
 # Import Libraries
 
-from . import utilities_v1_0_0_0 as utilities
-from . import contractEvents_v1_0_0_0 as contractEvents
-from . import contractFunctions_v1_0_0_0 as contractFunctions
+from past.builtins import execfile
+from . import loadVersioning as loadVersioning
+loadVersioning = loadVersioning.loadVersioning()
+execfile(loadVersioning.loader('utilities'))
+execfile(loadVersioning.loader('contractEvents'))
+execfile(loadVersioning.loader('contractFunctions'))
 
-utilities = utilities.utilities()
+
+
 frameworkInfo = utilities.getFrameworkInfo()
 
-contractEvents = contractEvents.contractEvents()
-contractFunctions = contractFunctions.contractFunctions()
 
 from past.builtins import execfile
 libraryPath = '{0}/libraries_v{1}.py'.format(frameworkInfo['Folders']['classes'], frameworkInfo['Metadata']['version'])

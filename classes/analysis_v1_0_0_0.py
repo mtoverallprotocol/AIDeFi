@@ -1,10 +1,10 @@
-from . import utilities_v1_0_0_0 as utilities
-from . import blockchain_v1_0_0_0 as blockchain
+from past.builtins import execfile
+from . import loadVersioning as loadVersioning
+loadVersioning = loadVersioning.loadVersioning()
+execfile(loadVersioning.loader('utilities'))
+execfile(loadVersioning.loader('blockchain'))
 
-utilities = utilities.utilities()
 frameworkInfo = utilities.getFrameworkInfo()
-
-blockchain = blockchain.blockchain()
 
 from past.builtins import execfile
 libraryPath = '{0}/libraries_v{1}.py'.format(frameworkInfo['Folders']['classes'], frameworkInfo['Metadata']['version'])
@@ -124,22 +124,12 @@ class analysis:
 
     def analyzeDexCustomers(self, _apiKey, _lenght):
         
-        from . import blockchain_v1_0_0_0 as blockchain
-        from . import utilities_v1_0_0_0 as utilities
-        blockchain = blockchain.blockchain()
-        utilities = utilities.utilities()
-        
         blockchain.importAllDexTransactions(_apiKey, 'ETHERSCAN', 'TXLIST', 'DEX', 'MAX', 0, _lenght) # 24 hours
         blockchain.importTransactionsFromDexCustomers(_apiKey, 'ETHERSCAN', 'TXLIST', 'DEX')
         utilities.mergeFiles('DEX')
         self.reportDexCustomers('DEX')
         
     def analyzeTokenCustomers(self, _apiKey, _lenght):
-        
-        from . import blockchain_v1_0_0_0 as blockchain
-        from . import utilities_v1_0_0_0 as utilities
-        blockchain = blockchain.blockchain()
-        utilities = utilities.utilities()
         
         blockchain.importAllDexTransactions(_apiKey, 'BSCSCAN', 'TXLIST', 'TOKEN', 'MAX', 0, _lenght)
         blockchain.importTransactionsFromDexCustomers(_apiKey, 'BSCSCAN', 'TXLIST', 'TOKEN')
