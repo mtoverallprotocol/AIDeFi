@@ -22,3 +22,4 @@ class contractFunctions:
                 #no-op
             functions.append(_ABI[match_name.end():match_output.start()])
         return functions
+    

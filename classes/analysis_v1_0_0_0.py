@@ -1,10 +1,22 @@
+from . import utilities_v1_0_0_0 as utilities
+from . import blockchain_v1_0_0_0 as blockchain
+
+utilities = utilities.utilities()
+frameworkInfo = utilities.getFrameworkInfo()
+
+blockchain = blockchain.blockchain()
+
+from past.builtins import execfile
+libraryPath = '{0}/libraries_v{1}.py'.format(frameworkInfo['Folders']['classes'], frameworkInfo['Metadata']['version'])
+execfile(libraryPath)
+
 class analysis:
     
     def ___init__(self, name):
         self.name = name
         
     def reportDexCustomers(self, _source):
-        
+
         dt = datetime.now().strftime("%Y%m%d_%H%M%S")
         EXPORT_FOLDER = 'export/{0}'.format(_source)
         export_files = [f for f in listdir(EXPORT_FOLDER) if isfile(join(EXPORT_FOLDER, f))]
@@ -34,28 +46,33 @@ class analysis:
         address = []
         name = []
         
-        for index in range(0, self.getNumberOfMaps(_source)):
-            dex = self.getMaps(index, _source)
-            address.append(dex[1].upper())
-            name.append(dex[0].upper())
-            dfDex = pd.DataFrame({'DEX_Address' : address, 'DEX_Name' : name})
-            dfDex.to_csv(r'DEX.csv', sep='|')
+        for index in range(0, blockchain.getNumberOfMaps(_source)):
+            dex = blockchain.getMaps(index, _source)
+            if(dex[0] != -1):
+                address.append(str(dex[1]).upper())
+                name.append(str(dex[0]).upper())
+                dfDex = pd.DataFrame({'DEX_Address' : address, 'DEX_Name' : name})
+                dfDex.to_csv(r'DEX.csv')
+            else:
+                print('Index {0} not found'.format(index))
         mantissa = 1
         
         # Define mantissa for each source category, if not declared mantissa = 1
         if(_source == 'DEX'):
-            mantissa = '{0}'.format(10 ** 18) # = 10 ^ 18
-            
-        sql = 'Select a.*, CASE WHEN fromAddress = fromAddress_ then "OUT" else "IN" END AS IN_OUT from transactionsFromUsersDex a'
+            mantissa = 10 ** 18 # = 10 ^ 18
+         
+        transactionsFromUsersDex['value'] = transactionsFromUsersDex['value'].astype(str)
+        
+        sql = 'Select a.*, CASE WHEN fromAddress = fromAddress_ then "OUT" else "IN" END AS IN_OUT, {0} as mantissa from transactionsFromUsersDex a'.format(mantissa)
         df = psql.sqldf(sql)
         dexList = []
         caseWhenStatement_IN = []
         caseWhenStatement_OUT = []
         sumCaseWhenStatement = []
             
-        for dexIndex in range(0, self.getNumberOfMaps(_source)):
-            name = self.getMaps(dexIndex, _source)[0]
-            address = self.getMaps(dexIndex, _source)[1]
+        for dexIndex in range(0, blockchain.getNumberOfMaps(_source)):
+            name = str(blockchain.getMaps(dexIndex, _source)[0])
+            address = str(blockchain.getMaps(dexIndex, _source)[1])
             df[name + '_IN'] = np.where(df['fromAddress'] == address.upper(), True, False)
             dexList.append(name + '_IN')
             df[name + '_OUT'] = np.where(df['toAddress'] == address.upper(), True, False)
@@ -83,7 +100,7 @@ class analysis:
               'From toDexTransactions ' \
               'Group by fromAddress ' \
               'Order By TOTAL_{2}_OUT desc'.format(sumCaseWhenStatement, mantissa, _source)
-
+        
         result = psql.sqldf(sql)
 
         q = [.5, .65, .8, .9, .95, .995]
@@ -102,17 +119,29 @@ class analysis:
               "END AS ADDRESS_CATEGORY " \
               "FROM result".format(totalDex_OUT_q[0], totalDex_OUT_q[1], totalDex_OUT_q[2], totalDex_OUT_q[3], totalDex_OUT_q[4], totalDex_OUT_q[5], _source)
         result = psql.sqldf(sql)
-        result.to_csv(r"export/CUSTOMER_{0}_ANALYSIS_{1}.csv".format(_source, dt), sep='|')
-        print("File saved at export/CUSTOMER_{0}_ANALYSIS_{1}.csv".format(_source, dt), sep='|')
+        result.to_csv(r"export/CUSTOMER_{0}_ANALYSIS_{1}.csv".format(_source, dt))
+        print("File saved at export/CUSTOMER_{0}_ANALYSIS_{1}.csv".format(_source, dt))
 
-    def analyzeDexCustomers(self, _apiKey):
-        self.importAllDexTransactions(_apiKey, 'ETHERSCAN', 'TXLIST', 'DEX', 'MAX', 0, 10) # 24 hours
-        self.importTransactionsFromDexCustomers(_apiKey, 'ETHERSCAN', 'TXLIST', 'DEX')
-        self.mergeFiles('DEX')
+    def analyzeDexCustomers(self, _apiKey, _lenght):
+        
+        from . import blockchain_v1_0_0_0 as blockchain
+        from . import utilities_v1_0_0_0 as utilities
+        blockchain = blockchain.blockchain()
+        utilities = utilities.utilities()
+        
+        blockchain.importAllDexTransactions(_apiKey, 'ETHERSCAN', 'TXLIST', 'DEX', 'MAX', 0, _lenght) # 24 hours
+        blockchain.importTransactionsFromDexCustomers(_apiKey, 'ETHERSCAN', 'TXLIST', 'DEX')
+        utilities.mergeFiles('DEX')
         self.reportDexCustomers('DEX')
         
-    def analyzeTokenCustomers(self, _apiKey):
-        self.importAllDexTransactions(_apiKey, 'BSCSCAN', 'TXLIST', 'TOKEN', 'MAX', 0, 10)
-        self.importTransactionsFromDexCustomers(_apiKey, 'BSCSCAN', 'TXLIST', 'TOKEN')
-        self.mergeFiles('TOKEN')
+    def analyzeTokenCustomers(self, _apiKey, _lenght):
+        
+        from . import blockchain_v1_0_0_0 as blockchain
+        from . import utilities_v1_0_0_0 as utilities
+        blockchain = blockchain.blockchain()
+        utilities = utilities.utilities()
+        
+        blockchain.importAllDexTransactions(_apiKey, 'BSCSCAN', 'TXLIST', 'TOKEN', 'MAX', 0, _lenght)
+        blockchain.importTransactionsFromDexCustomers(_apiKey, 'BSCSCAN', 'TXLIST', 'TOKEN')
+        utilities.mergeFiles('TOKEN')
         self.reportDexCustomers('TOKEN')

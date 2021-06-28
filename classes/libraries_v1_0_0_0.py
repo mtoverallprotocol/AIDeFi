@@ -18,7 +18,7 @@ from web3 import Web3
 
 import pandas as pd
 import numpy as np
-import pandasql as ps
+import pandasql as psql
 import string
 import re
 import math

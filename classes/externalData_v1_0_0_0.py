@@ -38,3 +38,4 @@ class externalData:
         r = requests.get('https://api.nasdaq.com/api/screener/stocks', headers=headers, params=params)
         data = r.json()['data']
         return pd.DataFrame(data['rows'], columns=data['headers'])
+    

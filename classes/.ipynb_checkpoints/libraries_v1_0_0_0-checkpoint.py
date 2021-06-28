@@ -8,6 +8,7 @@
 # pip install -U scikit-learn
 # pip install keras
 # pip install get-all-tickers
+# pip install "graphene>=2.0"
 
 # Web3 libraries
 
@@ -17,7 +18,7 @@ from web3 import Web3
 
 import pandas as pd
 import numpy as np
-import pandasql as ps
+import pandasql as psql
 import string
 import re
 import math

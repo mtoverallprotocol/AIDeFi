@@ -1,6 +1,3 @@
-from past.builtins import execfile
-execfile('classes/libraries_v1_0_0_0.py')
-
 class utilities:
     
     def ___init__(self, name):
@@ -28,6 +25,9 @@ class utilities:
     # Output: Integer
     
     def linearReSearch(self, _arrayList, _valueToSearch):
+        
+        import regex as re
+        
         result = -1
         index = 0
         for element in _arrayList:
@@ -46,6 +46,18 @@ class utilities:
     
     def mergeFiles(self, _source): #merge with fileList
         
+        # OS libraries
+
+        from datetime import datetime
+        import os
+        from os import listdir
+        from os import path
+        from os.path import isfile, join, isdir
+        from datetime import datetime
+        import sys
+
+        import pandas as pd
+
         EXPORT_FOLDER = 'export'
         
         if(path.exists('{0}/{1}'.format(EXPORT_FOLDER, _source)) == False):
@@ -72,17 +84,24 @@ class utilities:
                         os.remove('{0}/{1}'.format(EXPORT_FOLDER, indexFile))
             try:
                 df_result.drop_duplicates()
-                df_result.to_csv('{0}/{1}_{2}_{3}.csv'.format(SAVE_FOLDER, indexFileList ,'MERGED', dt), sep='|')
+                df_result.to_csv('{0}/{1}_{2}_{3}.csv'.format(SAVE_FOLDER, indexFileList ,'MERGED', dt))
                 print('File Merged at {0}/{1}_{2}_{3}.csv'.format(SAVE_FOLDER, indexFileList ,'MERGED', dt))
             except:
                 print("No File Detected with prefix {0}".format(indexFileList))
                 
     
     def createFolder(self, _folder):
+        
+        from os import path
+        import os
+        
         if(path.exists('{0}'.format(_folder)) == False):
             os.mkdir('{0}'.format(_folder))
             
     def include(filename):
+        
+        import os
+        
         if os.path.exists(filename): 
             execfile(filename)
       
@@ -111,4 +130,4 @@ class utilities:
         config.read("{0}/config.ini".format(path))
         
         return config
-    
+

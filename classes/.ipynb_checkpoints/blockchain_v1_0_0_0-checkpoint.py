@@ -68,7 +68,7 @@ class blockchain:
         
         if(_source == 'DEX'): 
             
-            dexes = pd.read_csv('data/dex.csv', delimiter='|')
+            dexes = pd.read_csv('data/dex.csv')
             for indexAddress in range(0, len(dexes)):
                 if(_index == indexAddress):     
                     address = dexes['Address'].values[_index]
@@ -76,7 +76,7 @@ class blockchain:
         
         if(_source == 'TOKEN'): 
             
-            tokens = pd.read_csv('data/token.csv', delimiter='|')
+            tokens = pd.read_csv('data/token.csv')
             for indexAddress in range(0, len(tokens)):
                 if(_index == indexAddress):     
                     address = tokens['Address'].values[_index]
@@ -84,12 +84,12 @@ class blockchain:
         
         if(_source == 'SMART_CONTRACT'): 
             
-            dexes = pd.read_csv('data/smartContract.csv', delimiter='|')
+            dexes = pd.read_csv('data/smartContract.csv')
             for indexAddress in range(0, len(dexes)):
                 if(_index == indexAddress):     
                     address = dexes['Address'].values[_index]
                     nameAddress = dexes['NameAddress'].values[_index]
-        
+                    
         return nameAddress, address, indexAddress + 1
     
     
@@ -156,68 +156,71 @@ class blockchain:
         df = pd.DataFrame()
         START_BLOCK = '0'
         END_BLOCK = '9999999999999999'
+        maxDf = []
         print(self.API_String(_provider, _action, [_address, START_BLOCK, END_BLOCK, _etherscanApiKey]))
         r = requests.get(self.API_String(_provider, _action, [_address, START_BLOCK, END_BLOCK, _etherscanApiKey]))
         tx = r.json()['result']
         #print(tx[0])
-        if(len(tx) > 0):
+        try:
+            if(len(tx) > 0):
+
+                cols = tx[0].keys()
+                df = pd.DataFrame(columns = cols)
+                lastBlock = int(tx[0]['blockNumber'])
+                if(_blockInterval == 'MAX'):
+
+                    TRANSACTION_LIMIT = 9999
+                    if(len(tx) < TRANSACTION_LIMIT):
+                        TRANSACTION_LIMIT = len(tx) * 2
+
+                    blockInterval = abs(int(tx[0]['blockNumber']) - int(tx[TRANSACTION_LIMIT]['blockNumber']))
+                else:
+                    blockInterval = _blockInterval # Uniswap API is limited to 10000 transictions data each time, max 2 request / s on free api account
+
+                indexBlock = _blockStart
+                blockStart = _blockStart
+                blockLimit = _blockLimit
+
+                unsplittable = True
+                lenMax_df = 0
+                while (blockLimit > indexBlock and unsplittable):
+
+                    endBlock = lastBlock - blockInterval * (indexBlock - 1)
+                    startBlock = endBlock - blockInterval
+
+                    try:
+                        r = requests.get(self.API_String(_provider, _action, [_address, startBlock, endBlock, _etherscanApiKey]))
+                        tx = r.json()['result']
+                        #print(tx)
+                        #print(len(tx))
+                        tmp_df = pd.DataFrame.from_dict(tx).filter(items = cols)
+                        if(len(tmp_df) > 0 and len(tmp_df) < 10000):
+
+                            df = pd.concat([df, tmp_df])
+                            if(len(df) > lenMax_df):
+                                maxDf = df
+                                lenMax_df = len(df)  
+
+                            print("Index Block Interval n. {0} - Imported {1} transactions - DateTime: {2}".format(indexBlock, len(tmp_df), datetime.now().strftime("%d/%m/%Y_%H:%M:%S")))
+                        else: #restart
+
+                            df = pd.DataFrame(columns = cols)
+                            indexBlock = _blockStart
+                            if(blockInterval / 2 == .5):
+                                unsplittable = False
+                            blockInterval = math.ceil(blockInterval / 2)
+
+                            print("Maximim number of transaction. Restarting import process. Block Interval set to {0}".format(blockInterval))
+
+                    except:
+                        r = None
+                        print("Error on request.")
+
+                    indexBlock = indexBlock + 1
             
-            cols = tx[0].keys()
-            df = pd.DataFrame(columns = cols)
-            lastBlock = int(tx[0]['blockNumber'])
-            if(_blockInterval == 'MAX'):
-                
-                TRANSACTION_LIMIT = 9999
-                if(len(tx) < TRANSACTION_LIMIT):
-                    TRANSACTION_LIMIT = len(tx) * 2
-
-                blockInterval = abs(int(tx[0]['blockNumber']) - int(tx[TRANSACTION_LIMIT]['blockNumber']))
-            else:
-                blockInterval = _blockInterval # Uniswap API is limited to 10000 transictions data each time, max 2 request / s on free api account
-                
-            indexBlock = _blockStart
-            blockStart = _blockStart
-            blockLimit = _blockLimit
-            
-            unsplittable = True
-            maxDf = []
-            lenMax_df = 0
-            while (blockLimit > indexBlock and unsplittable):
-
-                endBlock = lastBlock - blockInterval * (indexBlock - 1)
-                startBlock = endBlock - blockInterval
-
-                try:
-                    r = requests.get(self.API_String(_provider, _action, [_address, startBlock, endBlock, _etherscanApiKey]))
-                    tx = r.json()['result']
-                    #print(tx)
-                    #print(len(tx))
-                    tmp_df = pd.DataFrame.from_dict(tx).filter(items = cols)
-                    if(len(tmp_df) > 0 and len(tmp_df) < 10000):
-
-                        df = pd.concat([df, tmp_df])
-                        if(len(df) > lenMax_df):
-                            maxDf = df
-                            lenMax_df = len(df)  
-                        
-                        print("Index Block Interval n. {0} - Imported {1} transactions - DateTime: {2}".format(indexBlock, len(tmp_df), datetime.now().strftime("%d/%m/%Y_%H:%M:%S")))
-                    else: #restart
-
-                        df = pd.DataFrame(columns = cols)
-                        indexBlock = _blockStart
-                        if(blockInterval / 2 == .5):
-                            unsplittable = False
-                        blockInterval = math.ceil(blockInterval / 2)
-                   
-                        print("Maximim number of transaction. Restarting import process. Block Interval set to {0}".format(blockInterval))
-                     
-                except:
-                    r = None
-                    print("Error on request.")
-
-                indexBlock = indexBlock + 1
-            
-        return maxDf
+        except:
+            print("Undefined error for address {0}".format(_address))
+        return maxDf[1:len(maxDf)]
     
 
     
@@ -275,7 +278,7 @@ class blockchain:
                 
                 print("Importing transactions from {0}".format(csv_transactionList))
                 
-                df = pd.read_csv('{0}/{1}'.format(EXPORT_FOLDER, csv_transactionList), delimiter='|')
+                df = pd.read_csv('{0}/{1}'.format(EXPORT_FOLDER, csv_transactionList))
                 df = df.filter(items = ['from', 'value']) # Save cache memory space selecting the 2 usefuls columns
                 df = pd.DataFrame(df[df['value'] != '0']['from'].unique(), columns = ['from']) # Save cache memory space deleting duplicates and 0 values
                 dfCustomers = pd.concat([dfCustomers, df])
@@ -284,7 +287,7 @@ class blockchain:
                 
         dfCustomers = pd.DataFrame(dfCustomers['from'].unique(), columns = ['from']) #Save more memory and duplicates on final result
         
-        dfCustomers.to_csv('export/CUSTOMERS_LIST_FROM_DEX_{0}.csv'.format(dt), sep='|')
+        dfCustomers.to_csv('export/CUSTOMERS_LIST_FROM_DEX_{0}.csv'.format(dt))
         
         foundAddresses = len(dfCustomers)
         
@@ -325,7 +328,7 @@ class blockchain:
                 raise
 
         if(len(dfCustomers) > 0):
-            dfCustomers.to_csv('export/CUSTOMERS_TRANSACTIONS_FROM_DEX_{1}.csv'.format(fromAddress, dt), sep='|')
+            dfCustomers.to_csv('export/CUSTOMERS_TRANSACTIONS_FROM_DEX_{1}.csv'.format(fromAddress, dt))
         
     def importAllDexTransactions(self, _etherscanApiKey, _provider, _action, _source, _blockInterval, _blockStart, _blockLimit): #only DEXes
         
@@ -338,7 +341,7 @@ class blockchain:
             df = self.importTransactionListFromAddress(_etherscanApiKey, _provider, _action, address, _blockInterval, _blockStart, _blockLimit)
             if(len(df) > 0):
                 print("Dataset of {0}'s lenght is: {1}".format(addressName, len(df)))
-                df.to_csv("export/TRANSACTION_LIST_{0}_{1}.csv".format(addressName, dt), sep='|')
+                df.to_csv("export/TRANSACTION_LIST_{0}_{1}.csv".format(addressName, dt))
 
                 
                 
@@ -346,7 +349,7 @@ class blockchain:
     
     # @dev: This function allow us to save in a variable the contract datatype
     # Input: contract address, etherscan api key, connection string to web3 (Infura)
-    # Output: Dataframe with merged logs based on blocknumber timeline
+    # Output: Contract Data Type with all events and functions and other data and ABI
     
     def getContract(self, _address, _apiKey, _connectionString):
         ABI = requests.get(self.API_String('ETHERSCAN', 'ABI', [_address, _apiKey])).json()['result']
@@ -387,7 +390,7 @@ class blockchain:
     
     def decodeLogs(self, _tx, _contractAddress, _contract, _ABI, _connectionString): 
         
-        eventList = contractEvents.eventList(_contractAddress, _contract) # callable functions
+        eventList = contractEvents.eventList(_contract) # callable functions
         eventsName = contractEvents.getEventsFromABI(_ABI) #only function list
         
         keyLogList = {}
@@ -434,7 +437,7 @@ class blockchain:
     # Input: contract address, etherscan API key, connection string to Infura
     # Output: List of dataframes for each event of the contract address specified
     
-    def downloadContractLogsContent(self, _contractAddress, _apiKey, _connectionString):
+    def downloadContractLogsContent(self, _contractAddress, _apiKey, _connectionString, _depth, limit):
         
         filePath = "data/contracts/{0}/{1}{2}.csv"
 
@@ -444,34 +447,16 @@ class blockchain:
         
         contractName = _contractAddress
 
-        df_txHashList = self.importTransactionListFromAddress(_apiKey, 'ETHERSCAN', 'TXLIST', _contractAddress, 'MAX', 0 , 2)['hash'][1:] #set here dimension of transactions volume (to be defined or dev can set it using other variables)
+        df_txHashList = self.importTransactionListFromAddress(_apiKey, 'ETHERSCAN', 'TXLIST', _contractAddress, 'MAX', 0 , _depth)
         
-        print("Found {0} transaction(s)".format(len(df_txHashList)))
-        (keyLog, valueLog, txR) = self.decodeLogs(df_txHashList.iloc[0], _contractAddress, contract, ABI, _connectionString)
-        
-        txR_columns = []
-        for key in txR.keys():
-            if(key != 'logs'):
-                txR_columns.extend([key])
-        txR_values = []
-        for key in txR.keys():
-            if(key != 'logs'):
-                txR_values.extend([txR[key]])
+        if(len(df_txHashList) > 0):
+            
+            df_txHashList = df_txHashList['hash'][1:] #set here dimension of transactions volume (to be defined or dev can set it using other variables)
+            if(limit > 0):
+                df_txHashList = df_txHashList[0:limit]
 
-
-        warnings.filterwarnings('ignore') 
-        dfList = {}
-
-        isFirst = True
-        index = 1
-
-        createdKeyList = []
-
-        for tx in df_txHashList:
-
-            print("Downloading logs from {0} - {1} of {2} at {3}".format(tx, index, len(df_txHashList), datetime.now().strftime("%Y%m%d_%H%M%S")))
-
-            (keyLog, valueLog, txR) = self.decodeLogs(tx, _contractAddress, contract, ABI, _connectionString)
+            print("Found {0} transaction(s)".format(len(df_txHashList)))
+            (keyLog, valueLog, txR) = self.decodeLogs(df_txHashList.iloc[0], _contractAddress, contract, ABI, _connectionString)
 
             txR_columns = []
             for key in txR.keys():
@@ -482,34 +467,58 @@ class blockchain:
                 if(key != 'logs'):
                     txR_values.extend([txR[key]])
 
+
+            warnings.filterwarnings('ignore') 
+            dfList = {}
+
+            isFirst = True
+            index = 1
+
+            createdKeyList = []
+
+            for tx in df_txHashList:
+
+                print("Downloading logs from {0} - {1} of {2} at {3}".format(tx, index, len(df_txHashList), datetime.now().strftime("%Y%m%d_%H%M%S")))
+
+                (keyLog, valueLog, txR) = self.decodeLogs(tx, _contractAddress, contract, ABI, _connectionString)
+
+                txR_columns = []
+                for key in txR.keys():
+                    if(key != 'logs'):
+                        txR_columns.extend([key])
+                txR_values = []
+                for key in txR.keys():
+                    if(key != 'logs'):
+                        txR_values.extend([txR[key]])
+
+                for key in keyLog:
+                    if(len(keyLog[key])>0): #if key has a value
+
+                        keyLog[key].extend(txR_columns)
+                        valueLog[key].extend(txR_values)
+
+                        existKey = key in createdKeyList
+
+                        if(existKey):
+                            dfList[key] = pd.concat([dfList[key], pd.DataFrame([valueLog[key]], columns = keyLog[key])])
+                        else:
+                            dfList[key] = pd.DataFrame([valueLog[key]], columns = keyLog[key]) #create empty dataframe
+                            createdKeyList.append(key)
+
+                index = index + 1
+            print("-----------------------------------")
+            print("Log results for {0}:".format(contractName))
             for key in keyLog:
-                if(len(keyLog[key])>0): #if key has a value
+                try:
+                    print("Found {0} on key {1}".format(len(dfList[key]), key))
+                except:
+                    print("Key {0} not found".format(key))  
 
-                    keyLog[key].extend(txR_columns)
-                    valueLog[key].extend(txR_values)
+            dt = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-                    existKey = key in createdKeyList
-
-                    if(existKey):
-                        dfList[key] = pd.concat([dfList[key], pd.DataFrame([valueLog[key]], columns = keyLog[key])])
-                    else:
-                        dfList[key] = pd.DataFrame([valueLog[key]], columns = keyLog[key]) #create empty dataframe
-                        createdKeyList.append(key)
-
-            index = index + 1
-        print("-----------------------------------")
-        print("Log results for {0}:".format(contractName))
-        for key in keyLog:
-            try:
-                print("Found {0} on key {1}".format(len(dfList[key]), key))
-            except:
-                print("Key {0} not found".format(key))  
-                  
-        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        filePath = "data/contracts/{0}/{1}{2}_{3}.csv"
-        for dfKey in dfList.keys():
-            dfList[dfKey].to_csv(filePath.format(contractName, 'event_', dfKey, dt))
+            filePath = "data/contracts/{0}/{1}{2}_{3}.csv"
+            for dfKey in dfList.keys():
+                dfList[dfKey].to_csv(filePath.format(contractName, 'event_', dfKey, dt))
     
     
     
@@ -528,9 +537,6 @@ class blockchain:
         eventPrefix = 'event_'
         blockNumberDf = pd.DataFrame()
         dfList = {}
-        eventPrefix = 'event_'
-        blockNumberDf = pd.DataFrame()
-        dfList = {}
         for contractFolder in contractList:
             if(contractFolder != '.ipynb_checkpoints'):
                 cFolder = CONTRACT_FOLDER+'/'+contractFolder
@@ -544,7 +550,9 @@ class blockchain:
                             if(key == 'blockHash'):
                                 foundKey = indexKey
                             indexKey = indexKey + 1
-                        keyName = contractFolder.replace(" ", "_")+"_"+eventsData[0:len(eventsData)-4]
+                        # KEYNAME EXAMPLE: A6F6BF_CASHPRIOR. A = ADDRESS, 6F6BF = LAST 5 DIGITS OF THE ADDRESS, CASHPRIOR = EVENT NAME
+                        keyName = 'A'+contractFolder.replace(" ", "_")[len(contractFolder)-5:len(contractFolder)]+"_"+eventsData[len(eventPrefix):len(eventsData)-20] 
+                        keyName = keyName.upper()
                         dfList[keyName] = tmpDf.iloc[:, 1:foundKey]
                         dfList[keyName]['blockNumber'] = tmpDf['blockNumber']
                         blockNumberDf = pd.concat([blockNumberDf, tmpDf['blockNumber']])
@@ -583,7 +591,6 @@ class blockchain:
         dt = datetime.now().strftime("%Y%m%d_%H%M%S")
         blockNumberList.to_csv('{0}/smartContractsLogsGrouped_{1}.csv'.format(CONTRACT_FOLDER, dt))
         print('File saved on {0}/smartContractsLogsGrouped_{1}.csv'.format(CONTRACT_FOLDER, dt))
-    
     
     
     #################################################################################################################

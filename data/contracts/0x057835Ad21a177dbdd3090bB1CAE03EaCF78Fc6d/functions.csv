@@ -1,8 +1,0 @@
-,function
-0,ADDRESSES_PROVIDER
-1,getAllATokens
-2,getAllReservesTokens
-3,getReserveConfigurationData
-4,getReserveData
-5,getReserveTokensAddresses
-6,getUserReserveData

@@ -1,8 +1,0 @@
-,function
-0,getAddressesProviderIdByAddress
-1,getAddressesProvidersList
-2,owner
-3,registerAddressesProvider
-4,renounceOwnership
-5,transferOwnership
-6,unregisterAddressesProvider

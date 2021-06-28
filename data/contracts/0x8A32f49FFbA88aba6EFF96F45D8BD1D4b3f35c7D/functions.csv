@@ -1,6 +1,0 @@
-,function
-0,getMarketBorrowRate
-1,owner
-2,renounceOwnership
-3,setMarketBorrowRate
-4,transferOwnership
