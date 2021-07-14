@@ -105,8 +105,9 @@ class models:
             print()
             #2 plot 0 - 10 days
             
-            valid = data[training_data_len:training_data_len+10]
-            valid.insert(1,'Predictions',predictions[0:10], True)
+            dimension = 100
+            valid = data[training_data_len:training_data_len+dimension]
+            valid.insert(1,'Predictions',predictions[0:dimension], True)
             plt.figure(figsize=(16,8))
             plt.title('Model')
             plt.xlabel('Spectrum', fontsize=18)

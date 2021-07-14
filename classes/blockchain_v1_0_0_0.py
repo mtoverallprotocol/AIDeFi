@@ -416,12 +416,14 @@ class blockchain:
     # Input: contract address, contract datatype, contract ABI
     # Output: A couple of csv (events.csv and functions.csv)
     
-    def saveContractData(self,_contractAddress, _contract, _ABI):
+    def saveContractData(self,_contract):
         
-        contractName = _contractAddress
-        eventsList = contractEvents.getEventsFromABI(_ABI)
-        functionList = contractFunctions.getFunctionsFromABI(_ABI)
+        contractName = _contract.address.lower()
+        eventsList = contractEvents.getEventsFromSmartContract(_contract)
+        functionList = contractFunctions.getFunctionsFromSmartContract(_contract)
         
+        #print(eventsList)
+        #print(functionList)
         utilities.createFolder('data/contracts/{0}'.format(contractName))     
             
         filePath = "data/contracts/{0}/{1}.csv"
@@ -429,8 +431,8 @@ class blockchain:
         pd.DataFrame(eventsList, columns = ['event']).to_csv(filePath.format(contractName, 'events'))
         pd.DataFrame(functionList, columns = ['function']).to_csv(filePath.format(contractName, 'functions'))
         
-        
-        
+    def getABIFromSmartContract(self, _contract):
+        return str(_contract.abi).replace("\n","").replace(", ",",").replace(": ",":").replace("'",'"')
         
     #################################################################################################################
     
@@ -441,13 +443,18 @@ class blockchain:
     
     def downloadContractLogsContent(self, _contractAddress, _apiKey, _connectionString, _depth, limit):
         
+        from . import dynamics_v1_0_0_0 as dynamics
+        dynamics = dynamics.dynamics()
+        
+        dynamics.generateDynamicSmartContractEventsAndFunctions(_apiKey, _connectionString)
+        
         filePath = "data/contracts/{0}/{1}{2}.csv"
 
         (contract, ABI) = self.getContract(_contractAddress, _apiKey, _connectionString)
         
-        self.saveContractData(_contractAddress, contract, ABI)
+        self.saveContractData(contract)
         
-        contractName = _contractAddress
+        contractName = _contractAddress.lower()
 
         df_txHashList = self.importTransactionListFromAddress(_apiKey, 'ETHERSCAN', 'TXLIST', _contractAddress, 'MAX', 0 , _depth)
         
@@ -524,6 +531,31 @@ class blockchain:
     
     
     
+    def getLogs(self, _addresList, _apiKey, _connectionString, _bitQueryKey, _limit):
+        import pandas as pd
+        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+        smartContracts = _addresList
+        filePathEvents = "data/contracts/{0}/events.csv"
+        filePathTo = "data/contracts/{0}/{1}{2}_{3}.csv"
+        from classes import bitQuery_v1_0_0_0 as bitQuery
+        query = bitQuery.query()
+        bq = bitQuery.bitQuery()
+        for indexContract in range(0,len(smartContracts)):
+            address = smartContracts[indexContract].lower()
+            contract = self.getContract(address, _apiKey, _connectionString)[0]
+            self.saveContractData(contract)
+            eventList = pd.read_csv(filePathEvents.format(address.lower()))
+            for indexEvent in range(0, len(eventList)):
+                eventName = eventList['event'][indexEvent]
+                q = query.getEvents(address, eventName, _limit)
+                print("Quering {} - {}".format(address, eventName))
+                try:
+                    result = bq.directQuery(q, _bitQueryKey)
+                    result.to_csv(filePathTo.format(address, 'event_', eventName, dt))
+                except:
+                    print("Error on selected query")
+            
+        
     #################################################################################################################
     
     # @dev: This function allow to merge all events for each contract present inside data/contracts/{addressContract}
@@ -546,18 +578,19 @@ class blockchain:
                 for eventsData in eventsDataList:
                     if(eventsData[0:len(eventPrefix)] == eventPrefix):
                         tmpDf = pd.read_csv(cFolder+'/'+eventsData)
-                        indexKey = 0
-                        foundKey = 0
-                        for key in tmpDf.keys():
-                            if(key == 'blockHash'):
-                                foundKey = indexKey
-                            indexKey = indexKey + 1
                         # KEYNAME EXAMPLE: A6F6BF_CASHPRIOR. A = ADDRESS, 6F6BF = LAST 5 DIGITS OF THE ADDRESS, CASHPRIOR = EVENT NAME
                         keyName = 'A'+contractFolder.replace(" ", "_")[len(contractFolder)-5:len(contractFolder)]+"_"+eventsData[len(eventPrefix):len(eventsData)-20] 
                         keyName = keyName.upper()
-                        dfList[keyName] = tmpDf.iloc[:, 1:foundKey]
-                        dfList[keyName]['blockNumber'] = tmpDf['blockNumber']
-                        blockNumberDf = pd.concat([blockNumberDf, tmpDf['blockNumber']])
+                        if len(tmpDf.keys()) > 0:
+                            tmpDf = tmpDf.drop(columns=[tmpDf.keys()[0]])
+                            dfList[keyName] = tmpDf
+                            dfList[keyName]['blockNumber'] = tmpDf['blockNumber']
+                            blockNumberDf = pd.concat([blockNumberDf, tmpDf['blockNumber']])
+                            #print('##### {}'.format(keyName))
+                            #print("Total logs {}. Keys: {}".format(len(dfList[keyName]), " ".join(dfList[keyName].keys())))
+                            
+                        else:
+                            print("Keys not found at {}".format(keyName))
                         
         blockNumberList = pd.DataFrame(blockNumberDf[0].unique(), columns = ['blockNumber'])
         
@@ -565,9 +598,11 @@ class blockchain:
         colsBase = 'A.blockNumber, '
         cols = colsBase
         for key in dfList.keys():
+            #print(dfList[key].keys())
             groupCols = []
             afterCols = []
             for keyColumn in dfList[key].keys():
+                
                 if(keyColumn == 'from'): #special word
                     dfList[key].rename(columns={'from':'fromAddress'}, inplace=True)
                     keyColumn = 'fromAddress'
@@ -577,10 +612,10 @@ class blockchain:
                 if(keyColumn != 'blockNumber'):
                     groupCols.append('MAX('+keyColumn+') AS '+key+'_'+keyColumn+',')
                     afterCols.append(key+'_'+keyColumn+', ')
+            #print(groupCols)
             selectGroup = ' '.join(groupCols)
             selectGroupBase = ' '.join(afterCols)
             cols = cols + selectGroup
-
             df = dfList[key]
             joinStatement = "LEFT JOIN df B on A.blockNumber = B.blockNumber "
             groupByStatement = "GROUP BY A.blockNumber ORDER BY A.blockNumber"
@@ -607,6 +642,35 @@ class blockchain:
             address = self.getMaps(indexMap, 'SMART_CONTRACT')[1]
             ABI = requests.get(self.API_String('ETHERSCAN', 'ABI', [address, _apiKey])).json()['result']
             contract = self.getContract(address, _apiKey, _connectionString)
-            self.saveContractData(address, contract, ABI)
+            self.saveContractData(contract)
 
-    
+    def plotLogs(self, _arrayColumn, _fileLogDf, _savePlot = False):
+        columnsIndex = _arrayColumn
+        plt.figure(figsize = (16,8))
+        fig, axs = plt.subplots(len(columnsIndex), 1, figsize=(16, 5*len(columnsIndex)), sharex=True, sharey=False)
+        i = 0
+        columns = []
+        cond = []
+        names = []
+        values = []
+
+        for index in columnsIndex :
+            try:
+                columns.append(_fileLogDf.keys()[index])
+                print(columns[i])
+                cond.append(_fileLogDf[columns[i]].fillna(0).astype(float) > 0)
+                names.append(list(_fileLogDf[cond[i]]['blockNumber'].astype(float)))
+                values.append(list(_fileLogDf[cond[i]][columns[i]]))
+                axs[i].scatter(names[i], values[i])
+                axs[i].set_title(columns[i] + ' - min: ' + str(min(values[i])) + ' - max: ' + str(max(values[i]))) #add min max
+                axs[i].axes.get_yaxis().set_visible(False)
+                i = i + 1
+            except:
+                print('Error on: {}'.format(index))
+
+        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        fig.suptitle('plotLogs_{}'.format(dt))
+        
+        if(_savePlot):
+            fig.savefig('plotLogs_{}'.format(dt))  

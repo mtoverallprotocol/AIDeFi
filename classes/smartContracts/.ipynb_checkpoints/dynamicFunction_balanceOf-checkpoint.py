@@ -1,0 +1,1 @@
+return _contract.functions.balanceOf(0x00000045899347e89r79dhfehfkjbdsckbdci, 1)

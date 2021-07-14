@@ -23,7 +23,14 @@ class contractEvents:
             events.append(_ABI[match_name.end():match_type.start()])
         return events
     
-    
+    def getEventsFromSmartContract(self, _contract):
+        
+        try:
+            events = list(filter(lambda k: '_' not in k, dir(_contract.events))) 
+        except:
+            events = []
+            
+        return events
     
     #################################################################################################################
     
@@ -39,6 +46,6 @@ class contractEvents:
         
         # dynamic.generateDynamicSmartContractEventsAndFunctions was executed when the smart contract folder was created
         from past.builtins import execfile
-        execfile('classes/dynamicEvents.py')
+        execfile('classes/smartContracts/dynamicEvents.py')
             
         return eventList
