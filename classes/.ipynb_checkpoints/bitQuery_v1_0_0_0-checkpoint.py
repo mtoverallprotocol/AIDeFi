@@ -3,15 +3,26 @@ import requests
 import re
 import pandas as pd
 from graphene import ObjectType, String, Schema
+from past.builtins import execfile
+from . import loadVersioning as loadVersioning
+loadVersioning = loadVersioning.loadVersioning()
+execfile(loadVersioning.loader('utilities'))
+execfile(loadVersioning.loader('blockchain'))
+
+frameworkInfo = loadVersioning.getFrameworkInfo()
+CONNECTION_STRING = frameworkInfo['ConnectionString']['connectionString']
+ETHERSCAN_APIKEY = frameworkInfo['APIKeys']['etherscan']
+BSCSCAN_APIKEY = frameworkInfo['APIKeys']['bscscan']
+BITQUERY_APIKEY = frameworkInfo['APIKeys']['bitquery']
 
 class bitQuery:
     
     def ___init__(self, name, tables):
         self.name = name
     
-# -*- coding: utf-8 -*-
 
-    def __run_query(self, query, _bitQueryApiKey):  # A simple function to use requests.post to make the API call.
+    def runQuery(self, query):  # A simple function to use requests.post to make the API call.
+        _bitQueryApiKey = BITQUERY_APIKEY
         headers = {'X-API-KEY': _bitQueryApiKey}
         request = requests.post('https://graphql.bitquery.io/',
                                 json={'query': query}, headers=headers)
@@ -21,54 +32,11 @@ class bitQuery:
             raise Exception('Query failed and return code is {}.      {}'.format(request.status_code,
                             query))        
     
-    def __getDataframeFromQuery(self, _queryResult):
-        listResult = _queryResult['data']['ethereum']['smartContractEvents']
-        import pandas as pd
-        isFirst = True
-        for indexList in range(0, len(listResult)):
-            blockNumber = listResult[indexList]['block']['height']
-            timestamp_iso8601 = listResult[indexList]['block']['timestamp']['iso8601']
-            timestamp_unixtime = listResult[indexList]['block']['timestamp']['unixtime']
-            arguments = listResult[indexList]['arguments']
-            tmp_df = pd.DataFrame()
-            tmp_df['blockNumber'] = [blockNumber]
-            tmp_df['timestamp_iso8601'] = [timestamp_iso8601]
-            tmp_df['timestamp_unixtime'] = [timestamp_unixtime]
-
-            for indexArgs in range(0, len(arguments)):
-                tmp_df[arguments[indexArgs]['argument']] = [arguments[indexArgs]['value']]
-
-            if(isFirst):
-                df = tmp_df
-                isFirst = False
-            else:
-                df = pd.concat([df, tmp_df])
-                
-        return df
-    
-    # The GraphQL query
-    
-    def directQuery(self, _query, _bitQueryApiKey, _isRaw = False):
-        query = self.__run_query(_query, _bitQueryApiKey)  # Execute the query
-        if(_isRaw):
-            return query
-        else:
-            return self.__getDataframeFromQuery(query)
-    
-    
 
 class query(ObjectType):
         
     def ___init__(self, name, tables):
         self.name = name
-        
-    getDexTradeByProtocol = String(
-        count = String(),
-        protocol = String()
-    )
-    
-    def resolve_getDexTradeByProtocol(root, info):
-        return '{}'
     
     def dexTradeByProtocol(self):
         query = """
@@ -110,4 +78,45 @@ class query(ObjectType):
             }
         """
 
+        return query
+    
+    def getTransactionsFromAddress(self, _network, _address, _limit):
+        _network = '{}'.format(_network)
+        _address = '"{}"'.format(_address)
+        _limit = '{}'.format(_limit)
+        
+        query = """
+            {
+              ethereum(network: """+_network+""") {
+                smartContractCalls(
+                  options: {desc: "block.timestamp.time", limit: """+_limit+""", offset: 0}
+                  date: {since: null, till: null}
+                  height: {gt: 0}
+                  smartContractAddress: {is: """+_address+"""}
+                ) {
+                  block {
+                    timestamp {
+                      time(format: "%Y-%m-%d %H:%M:%S")
+                    }
+                    height
+                  }
+                  smartContractMethod {
+                    name
+                    signatureHash
+                  }
+                  address: caller {
+                    address
+                    annotation
+                  }
+                  transaction {
+                    hash
+                  }
+                  gasValue
+                  external
+                  amount
+                }
+              }
+            }
+        """
+        
         return query

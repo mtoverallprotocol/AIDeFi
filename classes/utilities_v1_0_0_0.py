@@ -1,3 +1,16 @@
+import os
+from . import settings as settings
+settings = settings.settings()
+
+frameworkInfo = settings.getFrameworkInfo()
+CONNECTION_STRING = frameworkInfo['ConnectionString']['connectionString']
+ETHERSCAN_APIKEY = frameworkInfo['APIKeys']['etherscan']
+BSCSCAN_APIKEY = frameworkInfo['APIKeys']['bscscan']
+BITQUERY_APIKEY = frameworkInfo['APIKeys']['bitquery']
+CLASSES_FOLDER = frameworkInfo['Folders']['classes']
+CONTRACTS_FOLDER = frameworkInfo['Folders']['contracts']
+TRANSACTIONS_FOLDER = frameworkInfo['Folders']['transactions']
+LISTENERS_FOLDER = frameworkInfo['Folders']['listeners']
 
 class utilities:
     
@@ -114,21 +127,37 @@ class utilities:
     # Input: nothing
     # Output: Dictionary
     
-    def getFrameworkInfo(self):
-        
-        import pathlib
-        from os import path, listdir
-        import os
-        import configparser
-        import json
-        
-        # Reading Configs
-        config = configparser.ConfigParser()
-        path = str(pathlib.Path(__file__).parent.absolute())
-        pathArray = path.split('/')
-        pathArray = pathArray[0:len(pathArray)-1]
-        path = "/".join(pathArray)
-        config.read("{0}/config.ini".format(path))
-        
-        return config
 
+
+    def plotLogs(self, _arrayColumn, _fileLogDf, _savePlot = False):
+        columnsIndex = _arrayColumn
+        plt.figure(figsize = (16,8))
+        fig, axs = plt.subplots(len(columnsIndex), 1, figsize=(16, 5*len(columnsIndex)), sharex=True, sharey=False)
+        i = 0
+        columns = []
+        cond = []
+        names = []
+        values = []
+
+        for index in columnsIndex :
+            try:
+                columns.append(_fileLogDf.keys()[index])
+                print(columns[i])
+                cond.append(_fileLogDf[columns[i]].fillna(0).astype(float) > 0)
+                names.append(list(_fileLogDf[cond[i]]['blockNumber'].astype(float)))
+                values.append(list(_fileLogDf[cond[i]][columns[i]]))
+                axs[i].scatter(names[i], values[i])
+                axs[i].set_title(columns[i] + ' - min: ' + str(min(values[i])) + ' - max: ' + str(max(values[i]))) #add min max
+                axs[i].axes.get_yaxis().set_visible(False)
+                i = i + 1
+            except:
+                print('Error on: {}'.format(index))
+
+        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        fig.suptitle('plotLogs_{}'.format(dt))
+        
+        if(_savePlot):
+            fig.savefig('plotLogs_{}'.format(dt)) 
+            
+    

@@ -1,6 +1,6 @@
 from past.builtins import execfile
-from . import loadVersioning as loadVersioning
-loadVersioning = loadVersioning.loadVersioning()
+from . import settings as settings
+settings = settings.loadVersioning()
 
 import re
     

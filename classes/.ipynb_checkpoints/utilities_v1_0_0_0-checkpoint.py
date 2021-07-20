@@ -1,4 +1,17 @@
-print("Loaded utilities")
+import os
+from . import settings as settings
+settings = settings.settings()
+
+frameworkInfo = settings.getFrameworkInfo()
+CONNECTION_STRING = frameworkInfo['ConnectionString']['connectionString']
+ETHERSCAN_APIKEY = frameworkInfo['APIKeys']['etherscan']
+BSCSCAN_APIKEY = frameworkInfo['APIKeys']['bscscan']
+BITQUERY_APIKEY = frameworkInfo['APIKeys']['bitquery']
+CLASSES_FOLDER = frameworkInfo['Folders']['classes']
+CONTRACTS_FOLDER = frameworkInfo['Folders']['contracts']
+TRANSACTIONS_FOLDER = frameworkInfo['Folders']['transactions']
+LISTENERS_FOLDER = frameworkInfo['Folders']['listeners']
+
 class utilities:
     
     def ___init__(self, name):
@@ -114,21 +127,102 @@ class utilities:
     # Input: nothing
     # Output: Dictionary
     
-    def getFrameworkInfo(self):
-        
-        import pathlib
-        from os import path, listdir
-        import os
-        import configparser
-        import json
-        
-        # Reading Configs
-        config = configparser.ConfigParser()
-        path = str(pathlib.Path(__file__).parent.absolute())
-        pathArray = path.split('/')
-        pathArray = pathArray[0:len(pathArray)-1]
-        path = "/".join(pathArray)
-        config.read("{0}/config.ini".format(path))
-        
-        return config
 
+
+    def plotLogs(self, _arrayColumn, _fileLogDf, _savePlot = False):
+        columnsIndex = _arrayColumn
+        plt.figure(figsize = (16,8))
+        fig, axs = plt.subplots(len(columnsIndex), 1, figsize=(16, 5*len(columnsIndex)), sharex=True, sharey=False)
+        i = 0
+        columns = []
+        cond = []
+        names = []
+        values = []
+
+        for index in columnsIndex :
+            try:
+                columns.append(_fileLogDf.keys()[index])
+                print(columns[i])
+                cond.append(_fileLogDf[columns[i]].fillna(0).astype(float) > 0)
+                names.append(list(_fileLogDf[cond[i]]['blockNumber'].astype(float)))
+                values.append(list(_fileLogDf[cond[i]][columns[i]]))
+                axs[i].scatter(names[i], values[i])
+                axs[i].set_title(columns[i] + ' - min: ' + str(min(values[i])) + ' - max: ' + str(max(values[i]))) #add min max
+                axs[i].axes.get_yaxis().set_visible(False)
+                i = i + 1
+            except:
+                print('Error on: {}'.format(index))
+
+        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        fig.suptitle('plotLogs_{}'.format(dt))
+        
+        if(_savePlot):
+            fig.savefig('plotLogs_{}'.format(dt)) 
+            
+    def listener(self, _ID, _listenerNameList, _sleepList = [0], _sleepAfter = 0):
+        
+        import time
+        
+        # Fill _sleepList if needed
+        
+        if len(_sleepList) < len(_listenerNameList):
+            last = _sleepList[len(_sleepList) - 1]
+            for i in range(0, len(_listenerNameList) - len(_sleepList)):
+                _sleepList.append(last)
+                
+        import os.path
+        
+        listenerID = _ID
+        openListener = '{}/open_{}.listener'.format(LISTENERS_FOLDER, listenerID) # only for the first call of the function
+        openState = 0
+
+        f = open(openListener,'w')
+        f.close()
+        isLoop = True
+
+        while isLoop:
+            try:
+                f = open(openListener,'r')
+                f.close()
+                openState = 1
+            except:
+                isLoop = False
+                print('Listener Stopped')
+                openState = 2
+            finally:
+                if openState == 1: #the file was removed
+                    index = 0
+                    for listener in _listenerNameList:
+                        self.__runListener(listener)
+                        time.sleep(_sleepList[index]) # seconds
+                    time.sleep(_sleepAfter)
+                    
+    def __runListener(self, _listenerName):
+        
+        if _listenerName == 'test': print("test")
+    
+    def __deleteListener(self, _listenerName):
+        try:
+            os.remove('{}.listener'.format(_listenerName))
+        except:
+            print('Listener not found')
+        
+    def __createWaiter(self, _IDWaiter):
+        f = open('{}.wait'.format(_IDWaiter),'w')
+        f.close()
+        
+    def __deleteWaiter(self, _IDWaiter):
+        try:
+            os.remove('{}.wait'.format(_IDWaiter))
+        except:
+            print('Waiter not found')
+        
+    def __checkWaiter(self, _IDWaiter, _afterSleep):
+        try:
+            while not os.path.isfile('{}.wait'.format(_IDWaiter)):
+                True #no-op
+                time.sleep(_afterSleep)
+        except:
+            True #no-op
+        return True
