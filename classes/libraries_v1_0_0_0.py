@@ -9,6 +9,7 @@
 # pip install keras
 # pip install get-all-tickers
 # pip install "graphene>=2.0"
+# pip install terra_sdk
 
 # Web3 libraries
 
@@ -48,6 +49,8 @@ import sys
 # Process libraries
 
 import warnings
+from time import sleep
+from tqdm import tqdm
 
 # Library default Settings
 

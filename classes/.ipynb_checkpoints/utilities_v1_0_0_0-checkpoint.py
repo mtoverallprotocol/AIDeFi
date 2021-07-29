@@ -160,69 +160,19 @@ class utilities:
         if(_savePlot):
             fig.savefig('plotLogs_{}'.format(dt)) 
             
-    def listener(self, _ID, _listenerNameList, _sleepList = [0], _sleepAfter = 0):
-        
-        import time
-        
-        # Fill _sleepList if needed
-        
-        if len(_sleepList) < len(_listenerNameList):
-            last = _sleepList[len(_sleepList) - 1]
-            for i in range(0, len(_listenerNameList) - len(_sleepList)):
-                _sleepList.append(last)
-                
-        import os.path
-        
-        listenerID = _ID
-        openListener = '{}/open_{}.listener'.format(LISTENERS_FOLDER, listenerID) # only for the first call of the function
-        openState = 0
-
-        f = open(openListener,'w')
-        f.close()
-        isLoop = True
-
-        while isLoop:
-            try:
-                f = open(openListener,'r')
-                f.close()
-                openState = 1
-            except:
-                isLoop = False
-                print('Listener Stopped')
-                openState = 2
-            finally:
-                if openState == 1: #the file was removed
-                    index = 0
-                    for listener in _listenerNameList:
-                        self.__runListener(listener)
-                        time.sleep(_sleepList[index]) # seconds
-                    time.sleep(_sleepAfter)
-                    
-    def __runListener(self, _listenerName):
-        
-        if _listenerName == 'test': print("test")
+     #################################################################################################################
     
-    def __deleteListener(self, _listenerName):
-        try:
-            os.remove('{}.listener'.format(_listenerName))
-        except:
-            print('Listener not found')
+    # @dev: 
+    # Input: array of dataframe columns (or array of elements) and array of filter
+    # Output: array of indexes of _keys where _arrayFilter is present
+    # Note: for merge logs table, it is useful to catch some specific columns indipendently from address or event
+    def filterColumns(self, _keys, _arrayFilter):
         
-    def __createWaiter(self, _IDWaiter):
-        f = open('{}.wait'.format(_IDWaiter),'w')
-        f.close()
+        indexList = []
+        index = 0
+        for key in _keys:
+            for filt in _arrayFilter:
+                if filt in key: indexList.append(index) 
+            index = index + 1
         
-    def __deleteWaiter(self, _IDWaiter):
-        try:
-            os.remove('{}.wait'.format(_IDWaiter))
-        except:
-            print('Waiter not found')
-        
-    def __checkWaiter(self, _IDWaiter, _afterSleep):
-        try:
-            while not os.path.isfile('{}.wait'.format(_IDWaiter)):
-                True #no-op
-                time.sleep(_afterSleep)
-        except:
-            True #no-op
-        return True
+        return indexList

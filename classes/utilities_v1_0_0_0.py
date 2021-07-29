@@ -160,4 +160,19 @@ class utilities:
         if(_savePlot):
             fig.savefig('plotLogs_{}'.format(dt)) 
             
+     #################################################################################################################
     
+    # @dev: 
+    # Input: array of dataframe columns (or array of elements) and array of filter
+    # Output: array of indexes of _keys where _arrayFilter is present
+    # Note: for merge logs table, it is useful to catch some specific columns indipendently from address or event
+    def filterColumns(self, _keys, _arrayFilter):
+        
+        indexList = []
+        index = 0
+        for key in _keys:
+            for filt in _arrayFilter:
+                if filt in key: indexList.append(index) 
+            index = index + 1
+        
+        return indexList

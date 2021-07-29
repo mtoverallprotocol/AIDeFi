@@ -2,7 +2,7 @@
 
 from past.builtins import execfile
 from . import settings as settings
-settings = settings.loadVersioning()
+settings = settings.settings()
 execfile(settings.loader('utilities'))
 execfile(settings.loader('contractEvents'))
 execfile(settings.loader('contractFunctions'))
@@ -47,17 +47,49 @@ class blockchain:
         else:
             w3 = None
         return w3               
+    
+        
+    #################################################################################################################
+    
+    # @dev: This function allow us to create tye correct API string from a specific provider
+    # Input: provider name, action, a tuple-array of data that will be put inside the API string
+    # Output: String with the correct API String
+    
+    def API_String(self, _provider, _action, _data):
+        apiString = None
+        if(_provider == 'ETHERSCAN'):
+            if(_action == 'TXLIST'):
+                apiString = 'https://api.etherscan.io/api?module=account&action=txlist&address={0}&startblock={1}&endblock={2}&sort=desc&apikey={3}'.format(_data[0], _data[1], _data[2], _data[3])
                 
+            if(_action == 'ABI'):
+                apiString = 'https://api.etherscan.io/api?module=contract&action=getabi&address={0}&apikey={1}'.format(_data[0], _data[1]) 
+                
+        if(_provider == 'BSCSCAN'):
+            if(_action == 'TXLIST'):
+                apiString = 'https://api.bscscan.com/api?module=account&action=txlist&address={0}&startblock={1}&endblock={2}&sort=desc&apikey={3}'.format(_data[0], _data[1], _data[2], _data[3])
+                
+            if(_action == 'ABI'):
+                apiString = 'https://api.bscscan.com/api?module=contract&action=getabi&address={0}&apikey={1}'.format(_data[0], _data[1]) 
+        
+        return apiString
+
     #################################################################################################################
     
     # @dev: This function allow us to save in a variable the contract datatype
     # Input: contract address, etherscan api key, connection string to web3 (Infura)
     # Output: Contract Data Type with all events and functions and other data and ABI
     
-    def getContract(self, _address):
-        _apiKey = ETHERSCAN_APIKEY
+    def getContract(self, _address, _network = 'ethereum'):
+        provider = None
+        if _network == 'ethereum':
+            provider = 'ETHERSCAN'
+            _apiKey = ETHERSCAN_APIKEY
+        if _network == 'bsc':
+            provider = 'BSCSCAN'
+            _apiKey = BSCSCAN_APIKEY
+        
         _connectionString = CONNECTION_STRING
-        ABI = requests.get(self.API_String('ETHERSCAN', 'ABI', [_address, _apiKey])).json()['result']
+        ABI = requests.get(self.API_String(provider, 'ABI', [_address, _apiKey])).json()['result']
         w3 = self.blockchainConnection()
         address = w3.toChecksumAddress(_address)
         try:
@@ -72,8 +104,8 @@ class blockchain:
     # Output: A couple of csv (events.csv and functions.csv)
     
     def saveContractData(self,_contract):
-        execfile(loadVersioning.loader('contractEvents'))
-        execfile(loadVersioning.loader('contractFunctions'))
+        execfile(settings.loader('contractEvents'))
+        execfile(settings.loader('contractFunctions'))
         contractName = _contract.address.lower()
         eventsList = contractEvents.getEventsFromSmartContract(_contract)
         functionList = contractFunctions.getFunctionsFromSmartContract(_contract)

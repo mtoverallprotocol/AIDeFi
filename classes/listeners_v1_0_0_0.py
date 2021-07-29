@@ -36,7 +36,6 @@ class listeners:
         f = open(openListener,'w')
         f.close()
         isLoop = True
-
         while isLoop:
             try:
                 f = open(openListener,'r')
@@ -47,10 +46,11 @@ class listeners:
                 print('Listener Stopped')
                 openState = 2
             finally:
-                if openState == 1: #the file was removed
+                if openState == 1: 
                     index = 0
                     for listener in _listenerNameList:
                         self.__runListener(listener, _sleepAfter)
+                        #globals()['self.__{0}'.format(listener)]()
                         time.sleep(_sleepList[index]) # seconds
                     time.sleep(_sleepAfter)
                     
@@ -107,5 +107,7 @@ class listeners:
         print('test3')
         self.__deleteWaiter('waiter1')
         
+
+
         
         

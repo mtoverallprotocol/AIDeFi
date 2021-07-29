@@ -4,12 +4,12 @@ import re
 import pandas as pd
 from graphene import ObjectType, String, Schema
 from past.builtins import execfile
-from . import loadVersioning as loadVersioning
-loadVersioning = loadVersioning.loadVersioning()
-execfile(loadVersioning.loader('utilities'))
-execfile(loadVersioning.loader('blockchain'))
+from . import settings as settings
+settings = settings.settings()
+execfile(settings.loader('utilities'))
+execfile(settings.loader('blockchain'))
 
-frameworkInfo = loadVersioning.getFrameworkInfo()
+frameworkInfo = settings.getFrameworkInfo()
 CONNECTION_STRING = frameworkInfo['ConnectionString']['connectionString']
 ETHERSCAN_APIKEY = frameworkInfo['APIKeys']['etherscan']
 BSCSCAN_APIKEY = frameworkInfo['APIKeys']['bscscan']
@@ -51,13 +51,21 @@ class query(ObjectType):
         """
         return query
     
-    def getEvents(self, _address, _eventName, _limit):
+    def getEvents(self, _address, _eventName, _limit, _network = 'ethereum'):
+        
+        # Encoding _network for bitquery syntax
+        networkEncoded = 'ethereum'
+        
+        if _network == 'ethereum': networkEncoded = 'ethereum' #By default network is already ethereum
+        if _network == 'bsc': networkEncoded = 'ethereum(network: {})'.format(_network)
+            
+            
         _address = '"{}"'.format(_address)
         _eventName = '"{}"'.format(_eventName)
         _limit = '{}'.format(_limit)
         query = """
                 {
-              ethereum {
+              """+networkEncoded+""" {
                 smartContractEvents(options: {desc: "block.height", limit: """+_limit+"""},
                   smartContractEvent: {is: """+_eventName+"""},
                   smartContractAddress: 
